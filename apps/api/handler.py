@@ -14,7 +14,7 @@ def handle(database, event):
     if event.get('operation') == 'health':
         # IAM-only provisioning check: no tenant data, embeddings or model calls.
         with database.transaction() as connection:
-            ready = connection.execute("SELECT pg_has_role(current_user, 'ci_worker', 'member') AS ready").fetchone()['ready']
+            ready = connection.execute("SELECT pg_has_role(current_user, 'ci_worker', 'member') AND to_regclass('cortex.synthesis_runs') IS NOT NULL AND to_regclass('cortex.memory_vectors') IS NOT NULL AS ready").fetchone()['ready']
         if not ready:
             raise RuntimeError('Restricted database role is unavailable')
         return {'status': 'ready', 'storage': 'postgresql', 'model_called': False}
