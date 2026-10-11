@@ -27,8 +27,8 @@ def configure():
     database_arn = os.environ.get('CI_DATABASE_SECRET_ARN')
     if database_arn:
         client = boto3.client('secretsmanager')
-        os.environ['KJCORTEX_DATABASE_URL'] = _raw_secret(client, database_arn)
-    elif not os.environ.get('KJCORTEX_DATABASE_URL'):
+        os.environ['KJ_CORTEX_DATABASE_URL'] = _raw_secret(client, database_arn)
+    elif not os.environ.get('KJ_CORTEX_DATABASE_URL'):
         raise RuntimeError('Missing runtime configuration: CI_DATABASE_SECRET_ARN')
 
     dedicated_arn = os.environ.get('CI_CORTEX_OPENAI_SECRET_ARN')

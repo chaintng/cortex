@@ -94,7 +94,7 @@ the existing OpenAI secret; permission errors and invalid credentials do not. Lo
 instances cache credentials; recycle/publish the runtime after key changes. Dedicated Secrets Manager values
 are raw strings. The database login inherits `ci_worker`; never use a migration
 login. Secrets are loaded without logging values. Local tests may use
-`KJCORTEX_DATABASE_URL` and `OPENAI_API_KEY` instead.
+`KJ_CORTEX_DATABASE_URL` and `OPENAI_API_KEY` instead.
 
 ## Delivery
 

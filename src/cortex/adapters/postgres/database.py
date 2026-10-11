@@ -8,7 +8,7 @@ from psycopg_pool import ConnectionPool
 class Database:
     def __init__(self, url=None):
         self.failure = None
-        self.pool = ConnectionPool(url or os.environ['KJCORTEX_DATABASE_URL'], min_size=0, max_size=3, open=True,
+        self.pool = ConnectionPool(url or os.environ['KJ_CORTEX_DATABASE_URL'], min_size=0, max_size=3, open=True,
                                    kwargs={'row_factory': dict_row, 'connect_timeout': 5}, timeout=5)
 
     @contextmanager
