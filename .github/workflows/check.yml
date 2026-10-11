@@ -23,9 +23,24 @@ jobs:
         run: docker build --platform linux/amd64 -t cortex:check .
       - name: Verify packaged Lambda entry point
         run: docker run --rm --entrypoint python cortex:check -c 'import apps.lambda_handler'
+  development-identity:
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'deploy-dev')
+    environment: development
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify public OIDC claims without exposing the credential
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const token = await core.getIDToken('sts.amazonaws.com');
+            const claims = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString());
+            core.info(JSON.stringify({sub: claims.sub, aud: claims.aud, repository_id: claims.repository_id}));
   publish-development:
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'deploy-dev')
-    needs: check
+    needs: [check, development-identity]
     permissions:
       contents: read
       id-token: write
