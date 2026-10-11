@@ -43,7 +43,7 @@ jobs:
             test "$GITHUB_REF" = refs/heads/main
             git merge-base --is-ancestor HEAD origin/main
           fi
-          test "$REPOSITORY" = kj-dev-conversation-intelligence
+          test "$REPOSITORY" = kj-dev-cortex
           test "$REGION" = ap-southeast-7
       - uses: astral-sh/setup-uv@v6
         with:
