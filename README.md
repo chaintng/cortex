@@ -90,7 +90,7 @@ Runtime variables: `CI_MODE`, `CI_PIPELINE`, `APP_ENV`,
 `CI_DATABASE_SECRET_ARN`, `CI_OPENAI_SECRET_ARN`, optional `CI_CORTEX_OPENAI_SECRET_ARN`.
 The Cortex-specific raw key takes precedence. Missing/empty dedicated values fall back to
 the existing OpenAI secret; permission errors and invalid credentials do not. Local
-`OPENAI_CORTEX_API_KEY` similarly takes precedence over `OPENAI_API_KEY`. Warm Lambda
+`OPENAI_KJ_CORTEX_API_KEY` similarly takes precedence over `OPENAI_API_KEY`. Warm Lambda
 instances cache credentials; recycle/publish the runtime after key changes. Dedicated Secrets Manager values
 are raw strings. The database login inherits `ci_worker`; never use a migration
 login. Secrets are loaded without logging values. Local tests may use

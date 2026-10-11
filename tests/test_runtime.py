@@ -7,7 +7,7 @@ from cortex.adapters.aws.runtime import configure
 @pytest.fixture(autouse=True)
 def isolated_runtime(monkeypatch):
     configure.cache_clear()
-    for key in ['CI_DATABASE_SECRET_ARN', 'CI_CORTEX_OPENAI_SECRET_ARN', 'OPENAI_CORTEX_API_KEY', 'OPENAI_API_KEY']:
+    for key in ['CI_DATABASE_SECRET_ARN', 'CI_CORTEX_OPENAI_SECRET_ARN', 'OPENAI_KJ_CORTEX_API_KEY', 'OPENAI_API_KEY']:
         monkeypatch.delenv(key, raising=False)
     monkeypatch.setenv('CI_DATABASE_URL', 'test-database')
     monkeypatch.setenv('CI_OPENAI_SECRET_ARN', 'fallback')

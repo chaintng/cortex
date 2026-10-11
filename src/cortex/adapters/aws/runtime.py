@@ -32,7 +32,7 @@ def configure():
         raise RuntimeError('Missing runtime configuration: CI_DATABASE_SECRET_ARN')
 
     dedicated_arn = os.environ.get('CI_CORTEX_OPENAI_SECRET_ARN')
-    key = os.environ.get('OPENAI_CORTEX_API_KEY', '').strip() or None
+    key = os.environ.get('OPENAI_KJ_CORTEX_API_KEY', '').strip() or None
     if dedicated_arn:
         client = client or boto3.client('secretsmanager')
         key = _raw_secret(client, dedicated_arn, optional=True)
