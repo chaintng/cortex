@@ -130,3 +130,7 @@ The structured response contains `memories`, `knowledge`, and `lessons` arrays. 
 Knowledge and lessons are Cortex insights with immutable revisions, evidence and exact-revision reviews. KMS owns published items/chunks and indexing state. Generic company search excludes skill lessons; Sales retrieval requires its explicit tenant flag and matching path/version. Customer memory requires no admin approval and never becomes policy. Source invalidation hides both memories and publications before asynchronous cleanup.
 
 The MVP snapshot records incomplete historical coverage. Additional skills, configurable paths, consolidation and MCP deployment are deferred. See [DB contract PR](https://github.com/kaojai-ai/db-contracts/pull/494).
+
+### Shared runtime secret pack
+
+Set `KJ_CORTEX_SECRET_NAME=/kj/development/all/secrets` for development (derive the environment namespace for other stacks). Cortex reads the JSON pack once per warm process and selects only `KJ_CORTEX_DATABASE_URL` and `OPENAI_KJ_CORTEX_API_KEY`, falling back to `OPENAI_API_KEY` within that same pack. Missing required keys, malformed JSON and permission failures fail closed; no fallback to old secrets or stale local values. Humans fill values; never commit them. Publish/release fresh function versions after value changes to refresh cached credentials. During migration, omitting KJ_CORTEX_SECRET_NAME retains the existing raw-string adapter. Shared-pack IAM exposes the whole bundle to the runtime even though Cortex selects only these keys.
