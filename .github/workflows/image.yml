@@ -1,0 +1,65 @@
+name: Build development Cortex image
+on:
+  workflow_dispatch:
+    inputs:
+      release_ref:
+        description: Full commit SHA to build; this workflow publishes an image only
+        type: string
+        required: true
+permissions:
+  contents: read
+  id-token: write
+concurrency: cortex-image-development
+jobs:
+  image:
+    environment: development
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.release_ref }}
+          fetch-depth: 0
+      - name: Validate immutable source and destination
+        env:
+          RELEASE_REF: ${{ inputs.release_ref }}
+          REPOSITORY: ${{ vars.CORTEX_ECR_REPOSITORY }}
+          REGION: ${{ vars.CORTEX_AWS_REGION }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/main
+          [[ "$RELEASE_REF" =~ ^[a-f0-9]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$RELEASE_REF"
+          git merge-base --is-ancestor HEAD origin/main
+          test "$REPOSITORY" = kj-dev-conversation-intelligence
+          test "$REGION" = ap-southeast-7
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: '0.10.12'
+          python-version: '3.12'
+      - name: Locked unit checks
+        run: uv sync --frozen && uv run pytest -q
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.CORTEX_IMAGE_ROLE_ARN }}
+          aws-region: ${{ vars.CORTEX_AWS_REGION }}
+      - name: Verify development account and environment
+        run: |
+          set -euo pipefail
+          test "$(aws sts get-caller-identity --query Account --output text)" = 628658447254
+          test "$(aws ssm get-parameter --name /kj/development/infra/APP_ENV --query Parameter.Value --output text)" = development
+      - uses: aws-actions/amazon-ecr-login@v2
+        id: login
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        id: build
+        with:
+          context: .
+          platforms: linux/amd64
+          provenance: false
+          push: true
+          tags: ${{ steps.login.outputs.registry }}/${{ vars.CORTEX_ECR_REPOSITORY }}:${{ inputs.release_ref }}
+      - name: Record immutable image; no Lambda deployment
+        env:
+          IMAGE: ${{ steps.login.outputs.registry }}/${{ vars.CORTEX_ECR_REPOSITORY }}@${{ steps.build.outputs.digest }}
+        run: printf '%s\n' "$IMAGE" >> "$GITHUB_STEP_SUMMARY"

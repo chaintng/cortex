@@ -1,0 +1,24 @@
+name: Cortex checks
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: '0.10.12'
+          python-version: '3.12'
+      - name: Locked unit checks
+        run: uv sync --frozen && uv run pytest -q
+      - name: Build Lambda image without publishing
+        run: docker build --platform linux/amd64 -t cortex:check .
+      - name: Verify packaged Lambda entry point
+        run: docker run --rm --entrypoint python cortex:check -c 'import cortex.handler'
