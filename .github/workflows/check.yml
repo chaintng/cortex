@@ -1,6 +1,7 @@
 name: Cortex checks
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
   push:
     branches: [main]
   workflow_dispatch:
@@ -21,4 +22,13 @@ jobs:
       - name: Build Lambda image without publishing
         run: docker build --platform linux/amd64 -t cortex:check .
       - name: Verify packaged Lambda entry point
-        run: docker run --rm --entrypoint python cortex:check -c 'import cortex.handler'
+        run: docker run --rm --entrypoint python cortex:check -c 'import apps.lambda_handler'
+  publish-development:
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'deploy-dev')
+    needs: check
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/image.yml
+    with:
+      release_ref: ${{ github.event.pull_request.head.sha }}

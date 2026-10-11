@@ -1,10 +1,10 @@
 import json
 from uuid import uuid4
 import pytest
-from cortex.database import Database
-from cortex.engine import SupabaseMemory, BudgetedModel, BudgetExhausted
-from cortex.evidence import bounded_evidence
-from cortex.storage import vector_literal
+from cortex.adapters.postgres.database import Database
+from cortex.adapters.mem0.engine import SupabaseMemory, BudgetedModel, BudgetExhausted
+from cortex.contracts.evidence import bounded_evidence
+from cortex.adapters.postgres.storage import vector_literal
 
 
 class FakeEmbedding:
@@ -102,7 +102,7 @@ def test_runtime_role_cannot_cross_tenant_or_create_tables():
 
 def test_embedding_failures_remain_latched_and_upstream_text_logs_are_disabled():
     import logging
-    from cortex.engine import MeasuredEmbedding
+    from cortex.adapters.mem0.engine import MeasuredEmbedding
     class BrokenEmbedding:
         def embed(self, *args, **kwargs): raise RuntimeError('provider failed')
     measured = MeasuredEmbedding(BrokenEmbedding())

@@ -1,7 +1,9 @@
 from uuid import uuid4
 from unittest.mock import Mock
 import pytest
-from cortex.handler import handle, retrieve
+from apps.worker.handler import handle as worker_handle
+from apps.api.handler import handle as api_handle
+from cortex.services.memory import retrieve
 
 
 def test_duplicate_intake_is_acknowledged_only_after_durable_write(monkeypatch):
@@ -9,7 +11,7 @@ def test_duplicate_intake_is_acknowledged_only_after_durable_write(monkeypatch):
     database = Mock()
     database.call.side_effect = ['intake', 'duplicate']
     event_id = str(uuid4())
-    result = handle(database, {'Records': [{'messageId': 'message', 'body': '{"event_id":"'+event_id+'"}'}]})
+    result = worker_handle(database, {'Records': [{'messageId': 'message', 'body': '{"event_id":"'+event_id+'"}'}]})
     assert result == {'batchItemFailures': []}
     database.call.assert_any_call('intake', event_id, 'knowledge')
 
@@ -18,7 +20,7 @@ def test_failed_durable_transition_keeps_queue_message(monkeypatch):
     monkeypatch.setenv('CI_PIPELINE', 'memory')
     database = Mock()
     database.call.side_effect = ['intake', RuntimeError('database unavailable')]
-    result = handle(database, {'Records': [{'messageId': 'retry', 'body': '{"event_id":"'+str(uuid4())+'"}'}]})
+    result = worker_handle(database, {'Records': [{'messageId': 'retry', 'body': '{"event_id":"'+str(uuid4())+'"}'}]})
     assert result == {'batchItemFailures': [{'itemIdentifier': 'retry'}]}
 
 
@@ -33,10 +35,10 @@ def test_request_filters_do_not_set_mem0_scope():
 def test_readiness_checks_storage_without_model_or_customer_reads(monkeypatch):
     from unittest.mock import MagicMock
     model = Mock(side_effect=AssertionError('Readiness must not initialize Mem0'))
-    monkeypatch.setattr('cortex.handler.SupabaseMemory', model)
+    monkeypatch.setattr('cortex.services.memory.SupabaseMemory', model)
     database = MagicMock()
     database.transaction.return_value.__enter__.return_value.execute.return_value.fetchone.return_value = {'ready': True}
-    assert handle(database, {'operation': 'health'}) == {'status': 'ready', 'storage': 'postgresql', 'model_called': False}
+    assert api_handle(database, {'operation': 'health'}) == {'status': 'ready', 'storage': 'postgresql', 'model_called': False}
     database.call.assert_not_called()
     model.assert_not_called()
 
@@ -46,4 +48,40 @@ def test_readiness_fails_when_runtime_role_is_not_restricted():
     database = MagicMock()
     database.transaction.return_value.__enter__.return_value.execute.return_value.fetchone.return_value = {'ready': False}
     with pytest.raises(RuntimeError, match='Restricted database role'):
-        handle(database, {'operation': 'health'})
+        api_handle(database, {'operation': 'health'})
+
+
+@pytest.mark.parametrize('mode,event', [
+    ('retrieval', {'Records': []}),
+    ('intake', {'operation': 'search'}),
+    ('knowledge-intake', {'operation': 'health'}),
+    ('unexpected', {'Records': []}),
+])
+def test_transport_rejects_wrong_trigger_before_credentials_or_database(monkeypatch, mode, event):
+    from apps.lambda_handler import lambda_handler
+    configure = Mock(side_effect=AssertionError('Unexpected credentials read'))
+    monkeypatch.setattr('apps.lambda_handler.configure', configure)
+    monkeypatch.setenv('CI_MODE', mode)
+    with pytest.raises(ValueError):
+        lambda_handler(event, None)
+    configure.assert_not_called()
+
+
+def test_shared_extraction_uses_injected_evidence_and_preserves_activation_checks(monkeypatch):
+    from cortex.services.memory import extract
+    database = Mock()
+    database.call.side_effect = [
+        {'status': 'claimed', 'lease_token': 'lease', 'tenant_id': 'tenant', 'conversation_id': 'chat', 'revision': 7, 'pipeline': 'memory'},
+        {'status': 'build', 'generation_id': 'generation'},
+        'active',
+    ]
+    evidence = Mock()
+    records = [{'role': 'user', 'content': 'Prefer Thai', 'source_id': 'source', 'source_kind': 'message', 'source_hash': 'hash'}]
+    evidence.load.return_value = (records, 'digest', {'records': 1})
+    memory = Mock(spec=["add", "assert_success"])
+    monkeypatch.setattr('cortex.services.memory.SupabaseMemory', Mock(return_value=memory))
+    assert extract(database, 'event', evidence=evidence) == 'active'
+    evidence.load.assert_called_once_with('tenant', 'chat')
+    assert all(call.args[0] != 'evidence' for call in database.call.call_args_list)
+    memory.add.assert_called_once_with([{'role': 'user', 'content': 'Prefer Thai'}], user_id='tenant', run_id='generation', metadata={'conversation_id': 'chat'}, infer=True)
+    database.call.assert_any_call('finish', 'event', 'lease', 'generation')

@@ -1,5 +1,10 @@
 name: Build development Cortex image
 on:
+  workflow_call:
+    inputs:
+      release_ref:
+        type: string
+        required: true
   workflow_dispatch:
     inputs:
       release_ref:
@@ -25,12 +30,19 @@ jobs:
           RELEASE_REF: ${{ inputs.release_ref }}
           REPOSITORY: ${{ vars.CORTEX_ECR_REPOSITORY }}
           REGION: ${{ vars.CORTEX_AWS_REGION }}
+          PR_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_REPO: ${{ github.event.pull_request.head.repo.full_name }}
         run: |
           set -euo pipefail
-          test "$GITHUB_REF" = refs/heads/main
           [[ "$RELEASE_REF" =~ ^[a-f0-9]{40}$ ]]
           test "$(git rev-parse HEAD)" = "$RELEASE_REF"
-          git merge-base --is-ancestor HEAD origin/main
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            test "$PR_REPO" = "$GITHUB_REPOSITORY"
+            test "$RELEASE_REF" = "$PR_SHA"
+          else
+            test "$GITHUB_REF" = refs/heads/main
+            git merge-base --is-ancestor HEAD origin/main
+          fi
           test "$REPOSITORY" = kj-dev-conversation-intelligence
           test "$REGION" = ap-southeast-7
       - uses: astral-sh/setup-uv@v6

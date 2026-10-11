@@ -114,3 +114,5 @@ and explicitly release aliases → run storage health verification. Runtime enab
 and real-model pilot acceptance remain separate. Retire the stateless-apps build
 entry point only with this source extraction; retained ECR images keep existing
 functions runnable.
+
+See [the repository layout and service boundaries](docs/architecture.md).

@@ -11,7 +11,7 @@ from mem0 import Memory
 from mem0.configs.base import MemoryConfig
 from mem0.utils.factory import EmbedderFactory, LlmFactory
 from openai import OpenAI
-from .storage import PostgresVectors, PostgresHistory
+from cortex.adapters.postgres.storage import PostgresVectors, PostgresHistory
 
 
 class BudgetExhausted(Exception):
