@@ -53,7 +53,7 @@ def test_mem0_real_add_search_and_persistent_history():
     if not url: pytest.skip('Disposable database URL required')
     db, tenant, generation = Database(url), str(uuid4()), str(uuid4())
     with db.transaction(tenant) as connection:
-        connection.execute("INSERT INTO conversation_intelligence.generations(generation_id,tenant_id,conversation_id,pipeline,source_revision,evidence_hash,config_hash) VALUES(%s,%s,'test','memory',1,'e','c')", (generation, tenant))
+        connection.execute("INSERT INTO cortex.memory_generations(generation_id,tenant_id,conversation_id,pipeline,source_revision,evidence_hash,config_hash) VALUES(%s,%s,'test','memory',1,'e','c')", (generation, tenant))
     try:
         memory = SupabaseMemory(db, tenant, [generation], generation, fake_llm=FakeModel(), fake_embedder=FakeEmbedding())
         result = memory.add('ลูกค้าชอบสีน้ำเงิน', user_id=tenant, run_id=generation)
@@ -75,7 +75,7 @@ def test_mem0_real_add_search_and_persistent_history():
         assert memory.history(publication['results'][0]['id'])[0]['new_memory'] == approved
     finally:
         with db.transaction(tenant) as connection:
-            connection.execute('DELETE FROM conversation_intelligence.generations WHERE generation_id=%s', (generation,))
+            connection.execute('DELETE FROM cortex.memory_generations WHERE generation_id=%s', (generation,))
         db.close()
 
 def test_runtime_role_cannot_cross_tenant_or_create_tables():
@@ -92,13 +92,13 @@ def test_runtime_role_cannot_cross_tenant_or_create_tables():
     with psycopg.connect(admin_url) as connection:
         connection.execute('SET LOCAL ROLE ci_worker')
         connection.execute("SELECT set_config('ci.tenant_id','96000000-0000-4000-8000-000000000001',true)")
-        assert connection.execute("SELECT count(*) FROM conversation_intelligence.vectors WHERE tenant_id='96000000-0000-4000-8000-000000000002'").fetchone()[0] == 0
+        assert connection.execute("SELECT count(*) FROM cortex.memory_vectors WHERE tenant_id='96000000-0000-4000-8000-000000000002'").fetchone()[0] == 0
         with pytest.raises(psycopg.errors.InsufficientPrivilege):
             with connection.transaction():
-                connection.execute('CREATE TABLE conversation_intelligence.forbidden_runtime_ddl(id int)')
+                connection.execute('CREATE TABLE cortex.forbidden_runtime_ddl(id int)')
         with pytest.raises(psycopg.errors.InsufficientPrivilege):
             with connection.transaction():
-                connection.execute('SELECT * FROM conversation_intelligence.knowledge')
+                connection.execute('SELECT * FROM cortex.knowledge')
 
 def test_embedding_failures_remain_latched_and_upstream_text_logs_are_disabled():
     import logging

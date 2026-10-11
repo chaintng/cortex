@@ -18,7 +18,7 @@ def handle(database, event):
         if not ready:
             raise RuntimeError('Restricted database role is unavailable')
         return {'status': 'ready', 'storage': 'postgresql', 'model_called': False}
-    if event.get('operation') not in ('search', 'knowledge_search', 'list'):
+    if event.get('operation') not in ('search', 'knowledge_search', 'lesson_search', 'list'):
         raise ValueError('Unsupported retrieval operation')
     started = time.monotonic()
     try:

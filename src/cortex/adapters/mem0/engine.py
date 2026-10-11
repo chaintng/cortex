@@ -68,6 +68,9 @@ class SupabaseMemory(Memory):
     must pass before changing the pinned release.
     """
     def __init__(self, database, tenant, generations, writable_generation=None, instructions=None, fake_llm=None, fake_embedder=None):
+        # A prior queue record may have failed on this invocation's shared DB.
+        # Failures from this memory operation must remain sticky until assert_success.
+        database.failure = None
         self.config = MemoryConfig(llm={'provider': 'openai', 'config': {'model': 'gpt-4.1-mini', 'temperature': 0, 'max_tokens': 3000}},
                                    embedder={'provider': 'openai', 'config': {'model': 'text-embedding-3-small', 'embedding_dims': 1536}},
                                    custom_fact_extraction_prompt=instructions)

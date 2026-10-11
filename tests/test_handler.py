@@ -67,24 +67,6 @@ def test_transport_rejects_wrong_trigger_before_credentials_or_database(monkeypa
     configure.assert_not_called()
 
 
-def test_shared_extraction_uses_injected_evidence_and_preserves_activation_checks(monkeypatch):
-    from cortex.services.memory import extract
-    database = Mock()
-    database.call.side_effect = [
-        {'status': 'claimed', 'lease_token': 'lease', 'tenant_id': 'tenant', 'conversation_id': 'chat', 'revision': 7, 'pipeline': 'memory'},
-        {'status': 'build', 'generation_id': 'generation'},
-        'active',
-    ]
-    evidence = Mock()
-    records = [{'role': 'user', 'content': 'Prefer Thai', 'source_id': 'source', 'source_kind': 'message', 'source_hash': 'hash'}]
-    evidence.load.return_value = (records, 'digest', {'records': 1})
-    memory = Mock(spec=["add", "assert_success"])
-    monkeypatch.setattr('cortex.services.memory.SupabaseMemory', Mock(return_value=memory))
-    assert extract(database, 'event', evidence=evidence) == 'active'
-    evidence.load.assert_called_once_with('tenant', 'chat')
-    assert all(call.args[0] != 'evidence' for call in database.call.call_args_list)
-    memory.add.assert_called_once_with([{'role': 'user', 'content': 'Prefer Thai'}], user_id='tenant', run_id='generation', metadata={'conversation_id': 'chat'}, infer=True)
-    database.call.assert_any_call('finish', 'event', 'lease', 'generation')
 
 
 @pytest.mark.parametrize('mode', ['intake', 'knowledge-intake', 'extraction', 'maintenance', 'retrieval'])

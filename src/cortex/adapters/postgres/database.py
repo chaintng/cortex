@@ -25,7 +25,7 @@ class Database:
                 self.failure = error
                 raise
 
-    def call(self, name, *args, tenant=None, actor=None, schema='conversation_intelligence'):
+    def call(self, name, *args, tenant=None, actor=None, schema='cortex'):
         with self.transaction(tenant, actor) as connection:
             query = sql.SQL('SELECT {}.{}({}) AS value').format(
                 sql.Identifier(schema), sql.Identifier(name), sql.SQL(',').join(sql.Placeholder() for _ in args))
