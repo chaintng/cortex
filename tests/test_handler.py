@@ -85,3 +85,20 @@ def test_shared_extraction_uses_injected_evidence_and_preserves_activation_check
     assert all(call.args[0] != 'evidence' for call in database.call.call_args_list)
     memory.add.assert_called_once_with([{'role': 'user', 'content': 'Prefer Thai'}], user_id='tenant', run_id='generation', metadata={'conversation_id': 'chat'}, infer=True)
     database.call.assert_any_call('finish', 'event', 'lease', 'generation')
+
+
+@pytest.mark.parametrize('mode', ['intake', 'knowledge-intake', 'extraction', 'maintenance', 'retrieval'])
+def test_each_deployed_mode_routes_to_its_adapter_and_closes_database(monkeypatch, mode):
+    from apps.lambda_handler import lambda_handler
+    database = Mock()
+    api, worker = Mock(return_value='api'), Mock(return_value='worker')
+    monkeypatch.setenv('CI_MODE', mode)
+    monkeypatch.setattr('apps.lambda_handler.configure', Mock())
+    monkeypatch.setattr('apps.lambda_handler.Database', Mock(return_value=database))
+    monkeypatch.setattr('apps.lambda_handler.api_handle', api)
+    monkeypatch.setattr('apps.lambda_handler.worker_handle', worker)
+    event = {'operation': 'health'} if mode == 'retrieval' else {'Records': []}
+    assert lambda_handler(event, None) == ('api' if mode == 'retrieval' else 'worker')
+    (api if mode == 'retrieval' else worker).assert_called_once_with(database, event)
+    (worker if mode == 'retrieval' else api).assert_not_called()
+    database.close.assert_called_once()
