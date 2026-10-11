@@ -59,8 +59,8 @@ Repository/package names change to Cortex. Existing AWS resource names, ECR path
 `CI_*` variables, database schema and request contracts remain stable. This avoids
 recreating deployed resources or breaking callers during the source move.
 
-Development has an image built from the earlier stateless-apps commit; this PR
-alone does not replace that image. The pilot remains disabled. The regional Lambda
+Image publication and alias release are separate from source merge. Development
+may deploy an exact tested draft-PR SHA. The pilot remains disabled. The regional Lambda
 concurrency quota is 10, so provisioning-only mode cannot enable consumers, the
 relay or application callers. Increase quota and verify reserved capacity before
 pilot enablement. Real-model quality, end-to-end events and retrieval latency are
@@ -95,20 +95,22 @@ login. Secrets are loaded without logging values. Local tests may use
 ## Delivery
 
 PR checks run locked tests and build an AMD64 Lambda image without publishing.
-The manual **Build development Cortex image** workflow publishes an immutable SHA
-tag and digest, but does not update a Lambda or alias. It requires a
+The **Build development Cortex image** workflow publishes an immutable SHA tag
+and digest, but does not update a Lambda or alias. Tested same-repository PRs
+can invoke it using the `deploy-dev` label; manual dispatch is available after
+the workflow reaches main. It requires a
 `development` GitHub environment and these non-secret environment variables:
 
 - `CORTEX_IMAGE_ROLE_ARN`: the dedicated Cortex ECR publishing role from infra.
 - `CORTEX_ECR_REPOSITORY`: existing development Mem0 ECR repository name.
 - `CORTEX_AWS_REGION`: `ap-southeast-7`.
 
-The role trusts only `repo:chaintng/cortex:environment:development`. It can publish
+The role trusts only `repo:chaintng@2979072/cortex@1413978984:environment:development`. It can publish
 images and read the environment marker, not read/write database or OpenAI secrets.
 Configure environment branch/reviewer protections through the normal protected
 release path before enabling image publication. No production workflow is added.
 
-Rollout: review/merge source → apply development OIDC change → configure protected
+Rollout: review tested source → apply development OIDC change → configure protected
 repository environment → build Cortex image → review infra digest change → apply
 and explicitly release aliases → run storage health verification. Runtime enablement
 and real-model pilot acceptance remain separate. Retire the stateless-apps build
